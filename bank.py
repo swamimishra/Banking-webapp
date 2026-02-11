@@ -7,6 +7,8 @@ class Bank:
     # Initialize Supabase Client
     # Expects st.secrets["SUPABASE_URL"] and st.secrets["SUPABASE_KEY"]
     
+    MAX_TRANSACTION_LIMIT = 10000
+
     @staticmethod
     def _get_client() -> Client:
         url = st.secrets["SUPABASE_URL"]
@@ -15,9 +17,9 @@ class Bank:
 
     @classmethod
     def generate_account_number(cls):
-        chars = random.choices(string.ascii_letters, k=3) + \
-                random.choices(string.digits, k=3) + \
-                random.choices("!@#$%^&*", k=1)
+        # Unique alphanumeric Account ID (random + string)
+        # Using 8 characters for enough entropy
+        chars = random.choices(string.ascii_uppercase + string.digits, k=8)
         random.shuffle(chars)
         return ''.join(chars)
 
@@ -26,7 +28,24 @@ class Bank:
         if age < 18 or len(str(pin)) != 4:
             return None, "Age must be 18+ and PIN should be 4 digits"
         
-        acc_no = cls.generate_account_number()
+        supabase = cls._get_client()
+        acc_no = None
+
+        # Loop check: SELECT 1 to ensure ID does not already exist
+        for _ in range(5):
+            temp_acc_no = cls.generate_account_number()
+            try:
+                # Check uniqueness
+                response = supabase.table("users").select("account_number").eq("account_number", temp_acc_no).execute()
+                if not response.data:
+                    acc_no = temp_acc_no
+                    break
+            except Exception:
+                continue
+
+        if not acc_no:
+             return None, "Failed to generate a unique account number. Please try again."
+
         user_data = {
             "name": name,
             "age": age,
@@ -37,7 +56,6 @@ class Bank:
         }
 
         try:
-            supabase = cls._get_client()
             response = supabase.table("users").insert(user_data).execute()
             # Check if insertion was successful (response.data should not be empty)
             if response.data:
@@ -69,13 +87,51 @@ class Bank:
 
     @classmethod
     def deposit(cls, acc_no, pin, amount):
-         # TODO: Update to update Supabase
-        pass
+        if amount <= 0:
+            return False, "Amount must be positive"
+        
+        if amount > cls.MAX_TRANSACTION_LIMIT:
+            return False, f"Transaction limit exceeded. Max limit is ₹{cls.MAX_TRANSACTION_LIMIT}"
+
+        try:
+            supabase = cls._get_client()
+            
+            # Fetch current user details to verify and get current balance
+            response = supabase.table("users").select("*") \
+                .eq("account_number", acc_no) \
+                .eq("pin", int(pin)) \
+                .execute()
+            
+            if not response.data:
+                return False, "Invalid Account Number or PIN"
+            
+            user = response.data[0]
+            current_balance = user['balance']
+            
+            # Update balance
+            new_balance = current_balance + amount
+            
+            update_response = supabase.table("users") \
+                .update({"balance": new_balance}) \
+                .eq("account_number", acc_no) \
+                .execute()
+            
+            if update_response.data:
+                return True, f"Deposit Successful! New Balance: ₹ {new_balance}"
+            else:
+                return False, "Transaction Failed (Database Error)"
+                
+        except Exception as e:
+            return False, f"Error processing deposit: {str(e)}"
 
     @classmethod
     def withdraw(cls, acc_no, pin, amount):
         if amount <= 0:
              return False, "Amount must be positive"
+
+        if amount > cls.MAX_TRANSACTION_LIMIT:
+            return False, f"Transaction limit exceeded. Max limit is ₹{cls.MAX_TRANSACTION_LIMIT}"
+             
              
         try:
             supabase = cls._get_client()
