@@ -2,27 +2,32 @@
 
 ![Python](https://img.shields.io/badge/Python-3.x-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Framework-red.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Supabase](https://img.shields.io/badge/Supabase-Backend-green.svg)
+![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Issues](https://img.shields.io/github/issues/PruthvirajChavan45/streambank-app)
 ![Stars](https://img.shields.io/github/stars/PruthvirajChavan45/streambank-app?style=social)
 
-A **simple banking management system** built with **Python & Streamlit**.  
-This project allows users to create and manage accounts with features like deposit, withdrawal, updating info, and deleting accounts - all through a clean web interface.  
+A **modern banking management system** built with **Python & Streamlit**, powered by **Supabase** for secure and scalable backend operations.
+This project allows users to create and manage accounts with features like deposit, withdrawal, and viewing account details through an intuitive web interface.
 
-> 💡 Ideal for learning **OOP concepts**, **Python development**, and **Streamlit web apps**.  
+> 💡 Ideal for learning **OOP concepts**, **Python development**, **Streamlit web apps**, and **Supabase integration**.
 
 ---
 
 ## ✨ Features
 
-- 👤 Create a new account with a unique account number  
-- 💰 Deposit money (up to ₹10,000 per transaction)  
-- 🏧 Withdraw money (with balance check)  
-- 📑 View account details (secured with PIN)  
-- ✏️ Update account information (name, email, PIN)  
-- 🗑️ Delete account permanently  
-- 🔒 PIN-protected authentication for all operations  
-- 📂 Data stored locally in a JSON file (`data.json`)  
+- 👤 **Create Account**: Open a new account with a unique, auto-generated account number.
+- 💰 **Deposit Money**: Secure deposit transactions (up to ₹10,000 per transaction).
+- 🏧 **Withdraw Money**: Withdraw funds with real-time balance checks.
+- 📑 **View Account Details**: Check balance and account info (protected by PIN).
+- 🔒 **Secure Authentication**: PIN-based verification for all sensitive operations.
+- ☁️ **Cloud Storage**: Data is securely stored in a Supabase PostgreSQL database.
+
+### 🚧 Planned Features (Coming Soon)
+- ✏️ Update account information (Name, Email, PIN)
+- 🗑️ Delete account functionality
+- � Transaction history log
+- � Email notifications
 
 ---
 
@@ -31,35 +36,58 @@ This project allows users to create and manage accounts with features like depos
 ```
 streambank-app/
 │── app.py              # Streamlit frontend (UI + interactions)
-│── bank.py             # Backend logic for bank operations
+│── bank.py             # Backend logic (Supabase integration)
 │── requirements.txt    # Required Python libraries
-│── data.json           # Auto-generated file to store account data
-│── screenshots/        # App UI screenshots for README.md
+│── .streamlit/         # Configuration directory
+│   └── secrets.toml    # Supabase credentials (not committed)
+│── screenshots/        # App UI screenshots
 ```
 
 ---
 
-## ⚙️ Installation
+## ⚙️ Installation & Setup
 
-Clone the repository:
+### 1. Clone the repository
 
-```
+```bash
 git clone https://github.com/PruthvirajChavan45/streamlit-bank.git
 cd streamlit-bank
 ```
 
-Create a virtual environment (recommended):
+### 2. Create a virtual environment (recommended)
 
-```
+```bash
 python -m venv venv
-source venv/bin/activate   # Mac/Linux
-venv\Scripts\activate      # Windows
+# Activate virtual environment:
+# Mac/Linux:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate
 ```
 
-Install dependencies:
+### 3. Install dependencies
 
-```
+```bash
 pip install -r requirements.txt
+```
+
+### 4. Configure Supabase
+
+1. Create a project on [Supabase.com](https://supabase.com/).
+2. Create a table named `users` with the following columns:
+    - `name` (text)
+    - `age` (int8)
+    - `email` (text)
+    - `pin` (int8)
+    - `account_number` (text) - *Primary Key*
+    - `balance` (float8) - *Default: 0.0*
+3. Get your **Project URL** and **API Key** from Supabase Settings > API.
+4. Create a file `.streamlit/secrets.toml` inside the project folder and add your credentials:
+
+```toml
+[general]
+SUPABASE_URL = "your-supabase-url"
+SUPABASE_KEY = "your-supabase-anon-key"
 ```
 
 ---
@@ -68,13 +96,11 @@ pip install -r requirements.txt
 
 Run the Streamlit app:
 
-```
+```bash
 streamlit run app.py
 ```
 
-By default, the app runs locally at:
-
-👉 [http://localhost:8501/](http://localhost:8501/)  
+By default, the app runs locally at: `http://localhost:8501/`
 
 ---
 
@@ -95,35 +121,17 @@ By default, the app runs locally at:
 ### 📑 Account Details
 ![Show Details Screenshot](screenshots/show_details.png)
 
-### ✏️ Update Your Info
-![Update Info Screenshot](screenshots/update_info.png)
-
-### 🗑️ Delete Account
-![Delete Account Screenshot](screenshots/delete_account.png)
-
 ---
 
-## 🔮 Future Improvements
+## �️ Tech Stack
 
-- Add **transaction history** and filter options  
-- Implement **user authentication via email**  
-- Integrate a **database** (SQLite / PostgreSQL) for robust storage  
-- Deploy online using **Streamlit Cloud / Heroku**  
-- Add **unit tests** and improved error handling  
-
-> ⚡ These features are planned for future updates to make the app more complete and production-ready.
-
----
-
-## 🛠️ Tech Stack
-
-- **Python 3.x**  
-- **Streamlit** (UI framework)  
-- **JSON** (local storage)  
+- **Frontend**: Streamlit
+- **Backend Logic**: Python
+- **Database**: Supabase (PostgreSQL)
 
 ---
 
 ## 👨‍💻 Author
 
-Developed by **Pruthviraj Chavan** ✨  
+Developed by **Pruthviraj Chavan** ✨
 🔗 [GitHub Profile](https://github.com/PruthvirajChavan45)
