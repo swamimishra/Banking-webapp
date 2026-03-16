@@ -132,8 +132,58 @@ elif menu == "Withdraw":
 
 elif menu == "Update Info":
     st.subheader("✏️ Update Profile")
-    st.info("Feature currently under maintenance.")
+    if st.session_state.user:
+        user = st.session_state.user
+        with st.form("update_info_form"):
+            st.write("Update any of the following fields:")
+            new_name = st.text_input("New Name", value=user["name"])
+            new_email = st.text_input("New Email", value=user["email"])
+            new_pin = st.text_input("New PIN (4 digits, leave blank if unchanged)", type="password", max_chars=4)
+            current_pin = st.text_input("Current PIN (Required to authorize changes)", type="password", max_chars=4)
+            submit = st.form_submit_button("Update Info")
+            
+        if submit:
+            if not current_pin:
+                st.warning("Current PIN is required to authorize changes.")
+            else:
+                name_to_update = new_name if new_name != user["name"] else None
+                email_to_update = new_email if new_email != user["email"] else None
+                pin_to_update = new_pin if new_pin else None
+                
+                if pin_to_update and (len(pin_to_update) != 4 or not pin_to_update.isdigit()):
+                    st.warning("New PIN must be exactly 4 digits.")
+                elif not (name_to_update or email_to_update or pin_to_update):
+                    st.info("No changes detected.")
+                else:
+                    success, msg = Bank.update_user(user["accountNo."], current_pin, name=name_to_update, email=email_to_update, new_pin=pin_to_update)
+                    if success:
+                        st.success(msg)
+                        updated_user = Bank.find_user(user['accountNo.'], pin_to_update if pin_to_update else current_pin)
+                        if updated_user:
+                            st.session_state.user = updated_user
+                            st.rerun()
+                    else:
+                        st.error(msg)
 
 elif menu == "Delete Account":
     st.subheader("🗑️ Delete Account")
-    st.info("Feature currently under maintenance.")
+    if st.session_state.user:
+        user = st.session_state.user
+        st.warning(f"Warning: This action is irreversible. All data for account **{user['accountNo.']}** will be permanently deleted.")
+        with st.form("delete_account_form"):
+            pin_confirm = st.text_input("Enter PIN to confirm deletion", type="password", max_chars=4)
+            submit = st.form_submit_button("Delete My Account")
+            
+        if submit:
+            if pin_confirm:
+                success, msg = Bank.delete_user(user["accountNo."], pin_confirm)
+                if success:
+                    st.session_state.user = None
+                    st.success(msg)
+                    st.info("Your account has been deleted. Refresh or switch to the Login menu.")
+                    # Using rerun to immediately navigate away from logged-in view
+                    st.rerun()
+                else:
+                    st.error(msg)
+            else:
+                st.warning("Please enter your PIN to confirm.")

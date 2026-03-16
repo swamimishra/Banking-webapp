@@ -168,12 +168,41 @@ class Bank:
             return False, f"Error processing withdrawal: {str(e)}"
 
     @classmethod
-    def update_user(cls, acc_no, pin, name=None, email=None, new_pin=None):
-         # TODO: Update to update Supabase
-        pass
+    def update_user(cls, acc_no, current_pin, name=None, email=None, new_pin=None):
+        try:
+            supabase = cls._get_client()
+            # Verify user with current_pin
+            response = supabase.table("users").select("*").eq("account_number", acc_no).eq("pin", int(current_pin)).execute()
+            if not response.data:
+                return False, "Invalid current PIN. Authorization failed."
+            
+            updates = {}
+            if name: updates["name"] = name
+            if email: updates["email"] = email
+            if new_pin: updates["pin"] = int(new_pin)
+
+            if not updates:
+                return False, "No updates provided."
+            
+            update_response = supabase.table("users").update(updates).eq("account_number", acc_no).execute()
+            if update_response.data:
+                return True, "Profile updated successfully!"
+            else:
+                return False, "Failed to update profile."
+        except Exception as e:
+            return False, f"Error updating user: {str(e)}"
 
     @classmethod
     def delete_user(cls, acc_no, pin):
-         # TODO: Update to delete from Supabase
-        pass
+        try:
+            supabase = cls._get_client()
+            # Verify user with pin
+            response = supabase.table("users").select("*").eq("account_number", acc_no).eq("pin", int(pin)).execute()
+            if not response.data:
+                return False, "Invalid PIN. Deletion not authorized."
+            
+            supabase.table("users").delete().eq("account_number", acc_no).execute()
+            return True, "Account deleted successfully."
+        except Exception as e:
+            return False, f"Error deleting user: {str(e)}"
 
