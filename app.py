@@ -165,16 +165,28 @@ elif nav_mode == "Dashboard":
             st.subheader("📜 Recent Transactions")
             if isinstance(transactions, list) and transactions:
                 df = pd.DataFrame(transactions)
-                df = df[['type', 'category', 'amount', 'timestamp']].sort_values('timestamp', ascending=False)
-                df['amount'] = df['amount'].apply(lambda x: f"₹ {x}")
-                df.rename(columns={'type': 'Type', 'category': 'Reference', 'amount': 'Amount', 'timestamp': 'Date'}, inplace=True)
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                
+                # Real Insights: Building chart from actual transaction categories
+                with st.expander("📈 Insights: Spending Breakdown", expanded=True):
+                    st.write("Visual analytics of your actual transaction categories.")
+                    if not df.empty and 'category' in df.columns:
+                        # Filter for 'Withdrawal' or 'Transfer' to show "Spending"
+                        spending_df = df[df['type'].isin(['Withdrawal', 'Transfer'])]
+                        if not spending_df.empty:
+                            cat_counts = spending_df.groupby('category')['amount'].sum()
+                            st.bar_chart(cat_counts)
+                        else:
+                            st.info("📊 Chart will appear once you have spending transactions (Transfers or Withdrawals).")
+                    else:
+                        st.info("Add transactions to see your spending breakdown.")
+
+                # Process DF for display table
+                df_display = df[['type', 'category', 'amount', 'timestamp']].sort_values('timestamp', ascending=False)
+                df_display['amount'] = df_display['amount'].apply(lambda x: f"₹ {x}")
+                df_display.rename(columns={'type': 'Type', 'category': 'Reference', 'amount': 'Amount', 'timestamp': 'Date'}, inplace=True)
+                st.dataframe(df_display, use_container_width=True, hide_index=True)
             else:
                 st.info("No recent activities documented.")
-                    
-            with st.expander("📈 Insights: Spending Breakdown"):
-                st.write("Visual analytics of your recent transactions.")
-                st.bar_chart({"Groceries": 450, "Direct Tax": 2100, "Subscriptions": 800, "Others": 1200})
             
         else:
             st.error("Session verification failed. Please login again.")
