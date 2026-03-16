@@ -11,8 +11,8 @@ class Bank:
 
     @staticmethod
     def _get_client() -> Client:
-        url = st.secrets["SUPABASE_URL"]
-        key = st.secrets["SUPABASE_KEY"]
+        url = st.secrets["supabase"]["url"]
+        key = st.secrets["supabase"]["key"]
         return create_client(url, key)
 
     @classmethod
@@ -86,6 +86,71 @@ class Bank:
             return None
 
     @classmethod
+    def _log_transaction(cls, acc_no, trans_type, amount, category="General"):
+        try:
+            supabase = cls._get_client()
+            log_data = {
+                "account_number": acc_no,
+                "type": trans_type,
+                "amount": amount,
+                "category": category
+            }
+            res = supabase.table("transactions").insert(log_data).execute()
+            if not res.data:
+                print(f"Logging failed: No data returned from insert.")
+        except Exception as e:
+            # S9: Global Error Handling - Log but don't crash the main user flow
+            error_msg = str(e)
+            if "PGRST205" in error_msg or "schema cache" in error_msg:
+                print(f"DATABASE ALERT: 'transactions' table missing or 'category' column missing. History logging disabled.")
+            else:
+                print(f"Failed to log transaction: {error_msg}")
+
+    @classmethod
+    def transfer_funds(cls, sender_acc, receiver_acc, pin, amount, category="Transfer"):
+        if amount <= 0:
+            return False, "Transfer amount must be positive"
+        if sender_acc == receiver_acc:
+            return False, "Cannot transfer to the same account"
+
+        try:
+            supabase = cls._get_client()
+            
+            # 1. Verify Sender and Balance
+            sender_res = supabase.table("users").select("*").eq("account_number", sender_acc).eq("pin", int(pin)).execute()
+            if not sender_res.data:
+                return False, "Invalid PIN or Sender Account"
+            
+            sender = sender_res.data[0]
+            if sender['balance'] < amount:
+                return False, "Insufficient Funds"
+
+            # 2. Verify Receiver Exists
+            receiver_res = supabase.table("users").select("*").eq("account_number", receiver_acc).execute()
+            if not receiver_res.data:
+                return False, "Receiver Account not found"
+            
+            receiver = receiver_res.data[0]
+
+            # 3. Perform Updates (Simulating Atomicity)
+            # Subtract from sender
+            new_sender_bal = sender['balance'] - amount
+            supabase.table("users").update({"balance": new_sender_bal}).eq("account_number", sender_acc).execute()
+            
+            # Add to receiver
+            new_receiver_bal = receiver['balance'] + amount
+            supabase.table("users").update({"balance": new_receiver_bal}).eq("account_number", receiver_acc).execute()
+
+            # 4. Log Transactions for both
+            cls._log_transaction(sender_acc, "Withdrawal", amount, f"Transfer to {receiver_acc}")
+            cls._log_transaction(receiver_acc, "Deposit", amount, f"Transfer from {sender_acc}")
+
+            return True, f"Successfully transferred ₹ {amount} to {receiver['name']} ({receiver_acc})"
+
+        except Exception as e:
+            return False, f"Transfer failed: {str(e)}"
+
+    @classmethod
     def deposit(cls, acc_no, pin, amount):
         if amount <= 0:
             return False, "Amount must be positive"
@@ -117,6 +182,7 @@ class Bank:
                 .execute()
             
             if update_response.data:
+                cls._log_transaction(acc_no, "Deposit", amount)
                 return True, f"Deposit Successful! New Balance: ₹ {new_balance}"
             else:
                 return False, "Transaction Failed (Database Error)"
@@ -131,8 +197,7 @@ class Bank:
 
         if amount > cls.MAX_TRANSACTION_LIMIT:
             return False, f"Transaction limit exceeded. Max limit is ₹{cls.MAX_TRANSACTION_LIMIT}"
-             
-             
+              
         try:
             supabase = cls._get_client()
             # 1. Fetch current balance (Atomic check start)
@@ -160,12 +225,31 @@ class Bank:
                 .execute()
             
             if update_response.data:
+                cls._log_transaction(acc_no, "Withdrawal", amount)
                 return True, f"Withdrawal Successful! New Balance: ₹ {new_balance}"
             else:
                 return False, "Transaction Failed (Database Error)"
                 
         except Exception as e:
             return False, f"Error processing withdrawal: {str(e)}"
+
+    @classmethod
+    def get_transactions(cls, acc_no):
+        try:
+            supabase = cls._get_client()
+            response = supabase.table("transactions") \
+                .select("*") \
+                .eq("account_number", acc_no) \
+                .order("timestamp", desc=True) \
+                .execute()
+            return response.data if response.data else []
+        except Exception as e:
+            error_msg = str(e)
+            if "PGRST205" in error_msg or "schema cache" in error_msg:
+                # Signal to frontend that the table is missing
+                return "TABLE_MISSING"
+            print(f"Error fetching transactions: {error_msg}")
+            return []
 
     @classmethod
     def update_user(cls, acc_no, current_pin, name=None, email=None, new_pin=None):

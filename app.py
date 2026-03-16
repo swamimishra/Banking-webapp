@@ -1,8 +1,64 @@
 import streamlit as st
 from bank import Bank
+import pandas as pd
 
-st.set_page_config(page_title="StreamBank App", layout="centered")
-st.title("🏦 Welcome to Streamlit Bank")
+st.set_page_config(page_title="StreamBank NetBanking", layout="wide", initial_sidebar_state="expanded")
+
+# --- CUSTOM CSS FOR LIGHT PROFESSIONAL LOOK ---
+st.markdown("""
+<style>
+    /* Professional Light Theme */
+    .stApp {
+        background-color: #f8fafc;
+        color: #1e293b;
+    }
+    
+    /* Metrics styling - Clean & Professional */
+    [data-testid="stMetricValue"] {
+        font-size: 2rem !important;
+        font-weight: 600 !important;
+        color: #1e40af !important; /* Deep Blue */
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.9rem !important;
+        color: #64748b !important;
+        font-weight: 500;
+    }
+    
+    /* Primary buttons */
+    div.stButton > button {
+        background-color: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0.5rem 1.5rem;
+        transition: background-color 0.2s;
+    }
+    div.stButton > button:hover {
+        background-color: #1d4ed8;
+        border-color: #1d4ed8;
+    }
+    
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background-color: #ffffff;
+        border-right: 1px solid #e2e8f0;
+    }
+
+    /* Cards */
+    .bank-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        border: 1px solid #e2e8f0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("🏦 StreamBank NetBanking")
+st.caption("Secure. Reliable. Innovative. | Professional Demo Version")
+st.markdown("---")
 
 # Initialize session state for authentication
 if 'user' not in st.session_state:
@@ -11,28 +67,31 @@ if 'user' not in st.session_state:
 def logout():
     st.session_state.user = None
     st.success("Logged out successfully!")
+    st.rerun()
 
 # Sidebar Navigation
 if st.session_state.user:
-    st.sidebar.success(f"Logged in as: {st.session_state.user['name']}")
-    menu = st.sidebar.selectbox(
-        "Menu",
-        ["Dashboard", "Deposit", "Withdraw", "Update Info", "Delete Account"]
-    )
+    st.sidebar.title("Navigation")
+    st.sidebar.info(f"Welcome back, **{st.session_state.user['name']}**")
+    
+    nav_mode = st.sidebar.radio("Go to", ["Dashboard", "Payments", "Account Services", "Settings"])
+    
+    st.sidebar.markdown("---")
     if st.sidebar.button("Logout"):
         logout()
-        st.rerun()
 else:
-    menu = st.sidebar.selectbox("Menu", ["Login", "Create Account"])
+    nav_mode = st.sidebar.selectbox("Access", ["Login", "Create Account"])
 
-if menu == "Create Account":
+# --- PAGE LOGIC ---
+
+if nav_mode == "Create Account":
     st.subheader("👤 Create New Account")
     with st.form("create_account_form"):
-        name = st.text_input("Your Name")
-        age = st.number_input("Your Age", min_value=0, step=1)
-        email = st.text_input("Your Email")
-        pin = st.text_input("Set a 4-digit PIN", type="password", max_chars=4)
-        submitted = st.form_submit_button("Create Account")
+        name = st.text_input("Full Name")
+        age = st.number_input("Age", min_value=0, step=1)
+        email = st.text_input("Email Address")
+        pin = st.text_input("Set a 4-digit Secure PIN", type="password", max_chars=4)
+        submitted = st.form_submit_button("Create My Account")
 
     if submitted:
         if name and email and pin:
@@ -41,26 +100,22 @@ if menu == "Create Account":
             elif len(pin) != 4 or not pin.isdigit():
                 st.warning("PIN must be exactly 4 digits.")
             else:
-                try:
-                    user, msg = Bank.create_account(name, int(age), email, int(pin))
-                    if user:
-                        st.success(msg)
-                        st.info(f"Your Account Number: {user['accountNo.']}")
-                        st.session_state.user = user  # Auto-login after creation
-                        st.markdown("Please **Login** specifically if auto-redirect doesn't work (or just refresh).")
-                        st.rerun()
-                    else:
-                        st.error(msg)
-                except ValueError:
-                    st.error("Invalid input. Please check your details.")
+                user, msg = Bank.create_account(name, int(age), email, int(pin))
+                if user:
+                    st.success(msg)
+                    st.info(f"Your Unique Account Number: {user['accountNo.']}")
+                    st.session_state.user = user
+                    st.rerun()
+                else:
+                    st.error(msg)
         else:
-            st.warning("Fill all fields")
+            st.warning("Please fill in all mandatory fields.")
 
-elif menu == "Login":
-    st.subheader("🔐 Login to Your Account")
+elif nav_mode == "Login":
+    st.subheader("🔐 Secure Entry")
     with st.form("login_form"):
         acc_no = st.text_input("Account Number")
-        pin = st.text_input("PIN", type="password", max_chars=4)
+        pin = st.text_input("Security PIN", type="password", max_chars=4)
         submit = st.form_submit_button("Login")
     
     if submit:
@@ -69,121 +124,161 @@ elif menu == "Login":
                 user = Bank.find_user(acc_no, int(pin))
                 if user:
                     st.session_state.user = user
-                    st.success("Login Successful!")
+                    st.success("Authorization Successful!")
                     st.rerun()
                 else:
                     st.error("Invalid Account Number or PIN.")
             except ValueError:
                 st.error("PIN must be numeric.")
         else:
-            st.warning("Please enter Account Number and PIN.")
+            st.warning("Credentials required.")
 
-elif menu == "Dashboard":
+elif nav_mode == "Dashboard":
     if st.session_state.user:
         user = st.session_state.user
-        st.subheader("📊 Your Dashboard")
-        st.info(f"**Account Number:** {user['accountNo.']}")
-        st.info(f"**Name:** {user['name']}")
+        st.subheader("📊 Accounts Overview")
         
+        # S12: Advanced Dashboard UI
         updated_user = Bank.find_user(user['accountNo.'], user['pin'])
         if updated_user:
-            st.session_state.user = updated_user 
-            st.metric(label="Current Balance", value=f"₹ {updated_user['balance']}")
-        else:
-            st.error("Error fetching latest data.")
-
-elif menu == "Deposit":
-    st.subheader("💰 Deposit Money")
-    if st.session_state.user:
-        user = st.session_state.user
-        st.write(f"Depositing to Account: **{user['accountNo.']}**")
-        amount = st.number_input("Amount to Deposit", min_value=1)
-        
-        if st.button("Deposit"):
-            success, msg = Bank.deposit(user['accountNo.'], user['pin'], int(amount))
-            if success:
-                st.success(msg)
-                updated_user = Bank.find_user(user['accountNo.'], user['pin'])
-                if updated_user:
-                    st.session_state.user = updated_user
-            else:
-                st.error(msg)
-
-elif menu == "Withdraw":
-    st.subheader("🏧 Withdraw Money")
-    if st.session_state.user:
-        user = st.session_state.user
-        st.write(f"Withdrawing from Account: **{user['accountNo.']}**")
-        st.info(f"Current Balance: ₹ {user['balance']}")
-        
-        # S5: Use st.number_input with step increments (e.g., 100, 500)
-        amount = st.number_input("Amount to Withdraw", min_value=1, step=100)
-        
-        if st.button("Withdraw"):
-            success, msg = Bank.withdraw(user['accountNo.'], user['pin'], int(amount))
-            if success:
-                st.success(msg)
-                # S5: Display new remaining balance immediately (Update Session)
-                updated_user = Bank.find_user(user['accountNo.'], user['pin'])
-                if updated_user:
-                    st.session_state.user = updated_user
-            else:
-                st.error(msg)
-
-elif menu == "Update Info":
-    st.subheader("✏️ Update Profile")
-    if st.session_state.user:
-        user = st.session_state.user
-        with st.form("update_info_form"):
-            st.write("Update any of the following fields:")
-            new_name = st.text_input("New Name", value=user["name"])
-            new_email = st.text_input("New Email", value=user["email"])
-            new_pin = st.text_input("New PIN (4 digits, leave blank if unchanged)", type="password", max_chars=4)
-            current_pin = st.text_input("Current PIN (Required to authorize changes)", type="password", max_chars=4)
-            submit = st.form_submit_button("Update Info")
+            st.session_state.user = updated_user
+            transactions = Bank.get_transactions(user['accountNo.'])
             
-        if submit:
-            if not current_pin:
-                st.warning("Current PIN is required to authorize changes.")
-            else:
-                name_to_update = new_name if new_name != user["name"] else None
-                email_to_update = new_email if new_email != user["email"] else None
-                pin_to_update = new_pin if new_pin else None
-                
-                if pin_to_update and (len(pin_to_update) != 4 or not pin_to_update.isdigit()):
-                    st.warning("New PIN must be exactly 4 digits.")
-                elif not (name_to_update or email_to_update or pin_to_update):
-                    st.info("No changes detected.")
+            with st.container():
+                col1, col2, col3 = st.columns(3)
+                if transactions == "TABLE_MISSING":
+                     st.warning("⚠️ **Note**: Transactions table not found in Supabase. Logging is disabled.")
+                     col1.metric("Available Balance", f"₹ {updated_user['balance']}")
+                     col2.metric("Savings Account", f"{user['accountNo.']}")
+                     col3.metric("Daily Limit", "₹ 10,000")
                 else:
-                    success, msg = Bank.update_user(user["accountNo."], current_pin, name=name_to_update, email=email_to_update, new_pin=pin_to_update)
+                    total_deposited = sum(t['amount'] for t in transactions if t['type'] == 'Deposit')
+                    total_withdrawn = sum(t['amount'] for t in transactions if t['type'] == 'Withdrawal')
+                    
+                    col1.metric("Available Balance", f"₹ {updated_user['balance']}", delta=f"₹ {total_deposited - total_withdrawn}")
+                    col2.metric("Savings Account", f"{user['accountNo.']}")
+                    col3.metric("Total Deposits", f"₹ {total_deposited}")
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # S11: Transaction History
+            st.subheader("📜 Recent Transactions")
+            if isinstance(transactions, list) and transactions:
+                df = pd.DataFrame(transactions)
+                
+                # Real Insights: Building chart from actual transaction categories
+                with st.expander("📈 Insights: Spending Breakdown", expanded=True):
+                    st.write("Visual analytics of your actual transaction categories.")
+                    if not df.empty and 'category' in df.columns:
+                        # Filter for 'Withdrawal' or 'Transfer' to show "Spending"
+                        spending_df = df[df['type'].isin(['Withdrawal', 'Transfer'])]
+                        if not spending_df.empty:
+                            cat_counts = spending_df.groupby('category')['amount'].sum()
+                            st.bar_chart(cat_counts)
+                        else:
+                            st.info("📊 Chart will appear once you have spending transactions (Transfers or Withdrawals).")
+                    else:
+                        st.info("Add transactions to see your spending breakdown.")
+
+                # Process DF for display table
+                df_display = df[['type', 'category', 'amount', 'timestamp']].sort_values('timestamp', ascending=False)
+                df_display['amount'] = df_display['amount'].apply(lambda x: f"₹ {x}")
+                df_display.rename(columns={'type': 'Type', 'category': 'Reference', 'amount': 'Amount', 'timestamp': 'Date'}, inplace=True)
+                st.dataframe(df_display, use_container_width=True, hide_index=True)
+            else:
+                st.info("No recent activities documented.")
+            
+        else:
+            st.error("Session verification failed. Please login again.")
+
+elif nav_mode == "Payments":
+    if st.session_state.user:
+        st.subheader("💸 Payments & Fund Transfers")
+        pay_tab1, pay_tab2 = st.tabs(["Quick Deposit", "P2P Fund Transfer"])
+        
+        with pay_tab1:
+            with st.form("deposit_form_new"):
+                st.write("Deposit funds into your Savings account.")
+                amount = st.number_input("Amount to Deposit", min_value=1)
+                cat = st.selectbox("Category", ["Salary", "Savings", "Gift", "Refund", "Others"])
+                submit_dep = st.form_submit_button("Confirm Deposit")
+                
+                if submit_dep:
+                    success, msg = Bank.deposit(st.session_state.user['accountNo.'], st.session_state.user['pin'], amount)
                     if success:
                         st.success(msg)
-                        updated_user = Bank.find_user(user['accountNo.'], pin_to_update if pin_to_update else current_pin)
-                        if updated_user:
-                            st.session_state.user = updated_user
-                            st.rerun()
+                        st.rerun()
+                    else:
+                        st.error(msg)
+        
+        with pay_tab2:
+            st.write("Send money instantly to other StreamBank customers.")
+            with st.form("transfer_form"):
+                target_acc = st.text_input("Recipient's Account Number")
+                transfer_amt = st.number_input("Amount (up to ₹10,000)", min_value=1, max_value=10000)
+                t_pin = st.text_input("Authorize with PIN", type="password", max_chars=4)
+                submit_transfer = st.form_submit_button("Initiate Transfer")
+                
+                if submit_transfer:
+                    if target_acc and transfer_amt and t_pin:
+                        success, msg = Bank.transfer_funds(st.session_state.user['accountNo.'], target_acc, t_pin, transfer_amt)
+                        if success:
+                            st.success(msg)
+                        else:
+                            st.error(msg)
+                    else:
+                        st.warning("All security fields are required.")
+
+elif nav_mode == "Account Services":
+    if st.session_state.user:
+        st.subheader("🛠️ Services & Management")
+        serv_menu = st.radio("Access Tool", ["Update Profile", "Withdrawal Hub", "Deactivate Account"], horizontal=True)
+        
+        if serv_menu == "Update Profile":
+             with st.form("update_form"):
+                new_name = st.text_input("Legal Name", value=st.session_state.user['name'])
+                new_email = st.text_input("Primary Email", value=st.session_state.user['email'])
+                curr_pin = st.text_input("Current Authorization PIN", type="password")
+                new_pin = st.text_input("Change PIN (Optional)", type="password", max_chars=4)
+                submit_up = st.form_submit_button("Apply Changes")
+                
+                if submit_up:
+                    success, msg = Bank.update_user(st.session_state.user['accountNo.'], curr_pin, 
+                                                  name=new_name, email=new_email, 
+                                                  new_pin=new_pin if new_pin else None)
+                    if success: st.success(msg)
+                    else: st.error(msg)
+                    
+        elif serv_menu == "Withdrawal Hub":
+            with st.form("withdraw_form"):
+                st.write("Withdrawal from Savings Account")
+                w_amt = st.number_input("Amount", min_value=1, step=100)
+                w_pin = st.text_input("Security PIN", type="password")
+                submit_w = st.form_submit_button("Verify & Dispense")
+                if submit_w:
+                    success, msg = Bank.withdraw(st.session_state.user['accountNo.'], w_pin, w_amt)
+                    if success: st.success(msg)
+                    else: st.error(msg)
+        
+        elif serv_menu == "Deactivate Account":
+            st.error("CRITICAL: Account Termination")
+            st.write("Deleting your account will purge all associated data immediately.")
+            with st.form("delete_form"):
+                d_pin = st.text_input("Confirm PIN for Termination", type="password")
+                submit_d = st.form_submit_button("Permanently Terminate Account")
+                if submit_d:
+                    success, msg = Bank.delete_user(st.session_state.user['accountNo.'], d_pin)
+                    if success:
+                        st.success(msg)
+                        st.session_state.user = None
+                        st.rerun()
                     else:
                         st.error(msg)
 
-elif menu == "Delete Account":
-    st.subheader("🗑️ Delete Account")
-    if st.session_state.user:
-        user = st.session_state.user
-        st.warning(f"Warning: This action is irreversible. All data for account **{user['accountNo.']}** will be permanently deleted.")
-        with st.form("delete_account_form"):
-            pin_confirm = st.text_input("Enter PIN to confirm deletion", type="password", max_chars=4)
-            submit = st.form_submit_button("Delete My Account")
-            
-        if submit:
-            if pin_confirm:
-                success, msg = Bank.delete_user(user["accountNo."], pin_confirm)
-                if success:
-                    st.session_state.user = None
-                    st.success(msg)
-                    st.info("Your account has been deleted. Refresh or switch to the Login menu.")
-                    # Using rerun to immediately navigate away from logged-in view
-                    st.rerun()
-                else:
-                    st.error(msg)
-            else:
-                st.warning("Please enter your PIN to confirm.")
+elif nav_mode == "Settings":
+    st.subheader("⚙️ Regional & Security Settings")
+    colA, colB = st.columns(2)
+    with colA:
+        st.info("🔒 **Biometric Authentication**\nPlanned for next Sprint.")
+    with colB:
+        st.info("🌍 **Language: English (Global)**")
