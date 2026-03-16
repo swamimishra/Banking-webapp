@@ -105,6 +105,10 @@ By default, the app runs locally at: `http://localhost:8501/`
 ---
 
 ## 📸 Screenshots
+Additional funtionality added in sprint 1 <img width="1141" height="675" alt="image" src="https://github.com/user-attachments/assets/7856f246-7413-4936-803c-f11fe43d2ee3" />
+![WhatsApp Image 2026-02-11 at 5 25 37 PM](https://github.com/user-attachments/assets/e068d04d-bdf3-46da-a649-bbd23069f26e)
+
+
 
 ### 🏠 Home Page
 ![Home Screenshot](screenshots/home.png)
